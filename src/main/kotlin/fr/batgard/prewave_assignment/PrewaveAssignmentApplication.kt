@@ -8,17 +8,17 @@ import org.springframework.context.annotation.Bean
 
 @SpringBootApplication
 class PrewaveAssignmentApplication {
-//	@Bean
-//	fun commandLineRunner(ctx: ApplicationContext): CommandLineRunner {
-//		return CommandLineRunner {
-//			println("Let's inspect the beans provided by Spring Boot:")
-//			val beanNames = ctx.beanDefinitionNames
-//			beanNames.sort()
-//			beanNames.onEach {
-//				println(it)
-//			}
-//		}
-//	}
+	@Bean
+	fun commandLineRunner(ctx: ApplicationContext): CommandLineRunner {
+		return CommandLineRunner {
+			println("Let's inspect the beans provided by Spring Boot:")
+			val beanNames = ctx.beanDefinitionNames
+			beanNames.sort()
+			beanNames.onEach {
+				println(it)
+			}
+		}
+	}
 
 }
 
