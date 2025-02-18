@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tree_edge_db
+    username: prewave
+    password: prew4vePwd
+    driver-class-name: org.postgresql.Driver
+
