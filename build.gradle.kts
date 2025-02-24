@@ -23,6 +23,14 @@ repositories {
     mavenCentral()
 }
 
+sourceSets {
+    main {
+        kotlin {
+            srcDir("build/generated-src/jooq/main") // Adjust the path to match your JOOQ output directory
+        }
+    }
+}
+
 buildscript {
     dependencies {
         classpath("org.postgresql:postgresql:42.7.5")
@@ -116,7 +124,7 @@ tasks.register("generateJooq") {
                     )
                     .withTarget(
                         org.jooq.meta.jaxb.Target()
-                            .withPackageName("fr.batgard.prewave.db.models")
+                            .withPackageName("fr.batgard.prewave_assignment.db.models")
                             .withDirectory("${projectDir}/build/generated-src/jooq/main")
                     )
             )
