@@ -1,5 +1,6 @@
 package fr.batgard.prewave_assignment.edge
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import fr.batgard.prewave_assignment.db.models.tables.Edge.Companion.EDGE
 import jakarta.servlet.http.HttpServletRequest
 import org.jooq.DSLContext
@@ -36,10 +37,54 @@ class EdgeController(private val edgeService: EdgeService) {
      * FIXME: this needs to be paginated
      */
     @GetMapping
-    fun getTree(rootNodeId: Int): ResponseEntity<List<Pair<Int, Int>>> {
-        return ResponseEntity.ok(edgeService.fetchTreeWithRoot(rootNodeId))
+    fun getTree(
+        @RequestParam rootNodeId: Int? = null,
+        @RequestParam page: Int = 1,
+        @RequestParam pageSize: Int = 20,
+    ): ResponseEntity<EdgeResponse> {
+
+        //FIXME: Add parameter validation for page and pageSize (set)
+
+        val tree = if (rootNodeId != null) {
+            edgeService.fetchTreeWithRoot(rootNodeId, page, pageSize)
+        } else {
+            edgeService.fetchTreeFromRoot(page, pageSize)
+        }
+        return ResponseEntity.ok(
+            EdgeResponse(
+                tree, EdgePageLink(
+                    first = edgeService.getFirstPageLink(rootNodeId, pageSize),
+                    next = edgeService.getNextPageLink(rootNodeId, page, pageSize),
+                    previous = edgeService.getPreviousPageLink(rootNodeId, page, pageSize),
+                    last = edgeService.getLastPageLink(rootNodeId, page, pageSize),
+                )
+            )
+        )
     }
 }
+
+data class EdgeRequestBody(
+    val fromId: Int,
+    val toId: Int
+)
+
+data class EdgeResponse(
+    @JsonProperty("edges")
+    val edges: List<Pair<Int, Int>>,
+    @JsonProperty("links")
+    val links: EdgePageLink,
+)
+
+data class EdgePageLink(
+    @JsonProperty("first")
+    val first: String,
+    @JsonProperty("last")
+    val last: String,
+    @JsonProperty("next")
+    val next: String?,
+    @JsonProperty("previous")
+    val previous: String?,
+)
 
 @ControllerAdvice
 class GlobalExceptionHandler {
@@ -64,12 +109,12 @@ class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     fun handleEdgeNotFoundException(e: EdgeAlreadyExistsException) {
     }
-}
 
-data class EdgeRequestBody(
-    val fromId: Int,
-    val toId: Int
-)
+    @ExceptionHandler(PageIndexOutOfBoundsException::class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    fun handleInvalidPageException(e: PageIndexOutOfBoundsException) {
+    }
+}
 
 @Service
 class EdgeService(private val edgeRepository: EdgeRepository) {
@@ -78,12 +123,74 @@ class EdgeService(private val edgeRepository: EdgeRepository) {
     }
 
     fun deleteEdge(request: EdgeRequestBody) {
-        if(!edgeRepository.deleteEdge(request.fromId, request.toId)) {
+        if (!edgeRepository.deleteEdge(request.fromId, request.toId)) {
             throw EdgeNotFoundException(message = "No edge found with fromId = ${request.fromId} and toId = ${request.toId}.")
         }
     }
 
-    fun fetchTreeWithRoot(nodeId: Int): List<Pair<Int, Int>> = edgeRepository.getTreeWithRoot(nodeId)
+    fun fetchTreeFromRoot(
+        page: Int,
+        pageSize: Int,
+    ): List<Pair<Int, Int>> {
+        return fetchTreeWithRoot(edgeRepository.getRootNodeId(), page, pageSize)
+    }
+
+    fun fetchTreeWithRoot(
+        nodeId: Int,
+        page: Int,
+        pageSize: Int,
+    ): List<Pair<Int, Int>> {
+        if (edgeRepository.contains(nodeId).not()) {
+            throw EdgeNotFoundException(message = "No edge found with fromId = $nodeId.")
+        }
+        if (countEdgesInSubtree(nodeId) <= (page - 1) * pageSize) {
+            throw PageIndexOutOfBoundsException("No data for requested page")
+        }
+        return edgeRepository.getTreeWithRoot(
+            nodeId,
+            page,
+            pageSize,
+        )
+    }
+
+    fun getFirstPageLink(rootNodeId: Int?, pageSize: Int) = generatePageLink(rootNodeId, FIRST_PAGE_INDEX, pageSize)
+
+    fun getNextPageLink(rootNodeId: Int?, page: Int, pageSize: Int): String? {
+        val totalEdges = countEdgesInSubtree(rootNodeId)
+        return if (totalEdges <= pageSize * page) {
+            null
+        } else {
+            generatePageLink(rootNodeId, page + 1, pageSize)
+        }
+    }
+
+    fun getPreviousPageLink(rootNodeId: Int?, page: Int, pageSize: Int): String? {
+        return if (page == FIRST_PAGE_INDEX) {
+            null
+        } else {
+            generatePageLink(rootNodeId, page - 1, pageSize)
+        }
+    }
+
+    fun getLastPageLink(rootNodeId: Int?, page: Int, pageSize: Int): String {
+        val pageIndex = (countEdgesInSubtree(rootNodeId) / pageSize).coerceAtLeast(1)
+        return generatePageLink(rootNodeId, pageIndex, pageSize)
+    }
+
+    private fun countEdgesInSubtree(rootNodeId: Int?) = if (rootNodeId == null) {
+        edgeRepository.countAll()
+    } else {
+        edgeRepository.countEdgesForNode(rootNodeId)
+    }
+
+    private fun generatePageLink(rootNodeId: Int?, page: Int, pageSize: Int): String {
+        val rootNodeIdQueryParam = if (rootNodeId != null) "&rootNodeId=$rootNodeId&" else ""
+        return "/edge?${rootNodeIdQueryParam}page=$page&pageSize=$pageSize"
+    }
+
+    private companion object {
+        const val FIRST_PAGE_INDEX = 1
+    }
 }
 
 @Repository
@@ -140,7 +247,29 @@ class EdgeRepository(private val dslContext: DSLContext) {
         return result > 0
     }
 
-    fun getTreeWithRoot(nodeId: Int): List<Pair<Int, Int>> {
+    /**
+     * Identifies the root node in a directed acyclic graph (DAG) represented by edges.
+     *
+     * The root node is determined as the node that only appears as a `FROM_ID` in the edge table
+     * and does not appear as a `TO_ID`. If multiple nodes satisfy this condition, the method will
+     * return the first result fetched. If no root node is found, an exception will be thrown.
+     *
+     * @return The ID of the root node of the graph.
+     * @throws IllegalStateException If no root node is found in the graph.
+     */
+    fun getRootNodeId(): Int {
+        return dslContext.selectDistinct(EDGE.FROM_ID)
+            .from(EDGE)
+            .where(
+                EDGE.FROM_ID.notIn(
+                    dslContext.select(EDGE.TO_ID).from(EDGE)
+                )
+            )
+            .fetch(EDGE.FROM_ID)
+            .first() ?: throw IllegalStateException("Couldn't find the root node")
+    }
+
+    fun getTreeWithRoot(nodeId: Int, page: Int, pageSize: Int): List<Pair<Int, Int>> {
         val cteName = "tree"
         val cte = name(cteName).fields(EDGE.FROM_ID.name, EDGE.TO_ID.name).`as`(
             select(EDGE.FROM_ID, EDGE.TO_ID).from(EDGE).where(EDGE.FROM_ID.eq(nodeId))
@@ -151,14 +280,51 @@ class EdgeRepository(private val dslContext: DSLContext) {
                         .on(EDGE.FROM_ID.eq(field(name(cteName, EDGE.TO_ID.name), INTEGER)))
                 )
         )
-        val fetchResult = dslContext.withRecursive(cte).selectFrom(cte).fetch()
-        if (fetchResult.isEmpty()) {
-            throw EdgeNotFoundException(message = "No edge found with fromId = $nodeId.")
-        }
+        val offset = (page - 1) * pageSize
+        /* Probably not ideal but better than filtering at a later point.
+         * Some thoughts on how to solve this: For each client, save requested content and some kind of index where we left off
+         */
+        val fetchResult = dslContext.withRecursive(cte)
+            .selectFrom(cte)
+            .limit(pageSize)
+            .offset(offset)
+            .fetch()
+            .sortedBy { it.value1() }
+
         return fetchResult.map { it.value1()!! to it.value2()!! }
+    }
+
+    fun countAll(): Int {
+        return dslContext.fetchCount(EDGE)
+    }
+
+    fun countEdgesForNode(nodeId: Int): Int {
+        val cteName = "edge_subtree_count"
+        val edgeSubtreeCountCte = name(cteName).fields(EDGE.FROM_ID.name, EDGE.TO_ID.name).`as`(
+            select(EDGE.FROM_ID, EDGE.TO_ID).from(EDGE).where(EDGE.FROM_ID.eq(nodeId))
+                .unionAll(
+                    select(EDGE.FROM_ID, EDGE.TO_ID)
+                        .from(table(name(cteName)))
+                        .join(EDGE)
+                        .on(EDGE.FROM_ID.eq(field(name(cteName, EDGE.TO_ID.name), INTEGER)))
+                )
+        )
+        return dslContext.withRecursive(edgeSubtreeCountCte)
+            .selectCount()
+            .from(table(name(cteName)))
+            .fetchOne(0, Int::class.java) ?: 0
+    }
+
+    fun contains(nodeId: Int): Boolean {
+        return dslContext.fetchExists(
+            selectOne()
+                .from(EDGE)
+                .where(EDGE.FROM_ID.eq(nodeId).or(EDGE.TO_ID.eq(nodeId)))
+        )
     }
 
 }
 
 class EdgeAlreadyExistsException(message: String) : RuntimeException(message)
 class EdgeNotFoundException(message: String) : RuntimeException(message)
+class PageIndexOutOfBoundsException(message: String) : RuntimeException(message)
