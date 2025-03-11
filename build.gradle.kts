@@ -68,7 +68,7 @@ jooq {
         // Configure the database connection here
         jdbc {
             driver = "org.postgresql.Driver"
-            url = "jdbc:postgresql://localhost:5432/tree_edge_db"
+            url = "jdbc:postgresql://database:5432/tree_edge_db"
             user = "prewave"
             password = "prew4vePwd"
         }
@@ -105,7 +105,7 @@ tasks.register("generateJooq") {
             .withJdbc(
                 Jdbc()
                     .withDriver("org.postgresql.Driver")
-                    .withUrl("jdbc:postgresql://localhost:5432/tree_edge_db")
+                    .withUrl("jdbc:postgresql://database:5432/tree_edge_db")
                     .withUser("prewave")
                     .withPassword("prew4vePwd")
             )

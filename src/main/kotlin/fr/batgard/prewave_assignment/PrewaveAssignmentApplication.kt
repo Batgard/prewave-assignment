@@ -19,7 +19,6 @@ class PrewaveAssignmentApplication {
 			}
 		}
 	}
-
 }
 
 fun main(args: Array<String>) {
