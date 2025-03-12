@@ -34,7 +34,6 @@ class EdgeController(private val edgeService: EdgeService) {
 
     /**
      * @param rootNodeId the root node ID
-     * FIXME: this needs to be paginated
      */
     @GetMapping
     fun getTree(
@@ -117,7 +116,17 @@ class GlobalExceptionHandler {
 }
 
 @Service
-class EdgeService(private val edgeRepository: EdgeRepository) {
+class EdgeService constructor(
+    private val edgeRepository: EdgeRepository,
+    private val hostName: String,
+    port: String?,
+) {
+    private val port: String? = if (port != null) {
+        ":$port"
+    } else {
+        null
+    }
+
     fun createEdge(request: EdgeRequestBody) {
         edgeRepository.insertEdge(request.fromId, request.toId)
     }
@@ -185,7 +194,7 @@ class EdgeService(private val edgeRepository: EdgeRepository) {
 
     private fun generatePageLink(rootNodeId: Int?, page: Int, pageSize: Int): String {
         val rootNodeIdQueryParam = if (rootNodeId != null) "&rootNodeId=$rootNodeId&" else ""
-        return "/edge?${rootNodeIdQueryParam}page=$page&pageSize=$pageSize"
+        return "http://$hostName$port/edge?${rootNodeIdQueryParam}page=$page&pageSize=$pageSize"
     }
 
     private companion object {

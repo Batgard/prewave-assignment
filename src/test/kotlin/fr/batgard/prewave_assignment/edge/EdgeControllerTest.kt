@@ -31,7 +31,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given edge doesn't exists When creating it Then it gets inserted in database`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
 
         val edgeRequestContent = EdgeRequestBody(fromId = 1, toId = 2)
         edgeController.createEdge(edgeRequestContent)
@@ -40,7 +40,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given edge already exists When trying to insert it again Then there's only one entry in db for it`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
 
         val edgeRequestContent = EdgeRequestBody(fromId = 1, toId = 2)
         edgeController.createEdge(edgeRequestContent)
@@ -56,7 +56,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given edge already exists When trying to insert it again Then a edge already exists exception is thrown`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
 
         val edgeRequestContent = EdgeRequestBody(fromId = 1, toId = 2)
         edgeController.createEdge(edgeRequestContent)
@@ -68,7 +68,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given edge 0 does not exist, When requesting it with its subtree Then an error not found is returned`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
 
         insertTreeInDatabase(edgeController)
 
@@ -79,7 +79,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given edge 1 exists and is the root node, When requesting it with its subtree Then ok response is returned with the complete list of edges of the entire tree`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
 
         insertTreeInDatabase(edgeController)
 
@@ -94,7 +94,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given get tree endpoint is requested without an edge ID provided, When treating the request Then root node is used`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
 
         insertTreeInDatabase(edgeController)
 
@@ -112,7 +112,7 @@ class EdgeControllerTest {
      */
     @Test
     fun `Given a leaf node exists When requesting its subtree Then a page out of bounds exception is thrown`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
 
         insertTreeInDatabase(edgeController)
 
@@ -123,7 +123,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given edge 2 exists and is not the root node, When requesting it with its subtree Then only its edges and those from it's subtree are returned`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
 
         insertTreeInDatabase(edgeController)
 
@@ -137,7 +137,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given db has many edges When requesting with pagination Then correct subset of edges is returned`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
 
         val firstPageResponse = edgeController.getTree(page = 1, pageSize = 3)
@@ -157,7 +157,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given requested page exceeds total pages When requesting it Then edge not found exception is thrown`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
 
         assertThrows<PageIndexOutOfBoundsException> {
@@ -167,25 +167,25 @@ class EdgeControllerTest {
 
     @Test
     fun `Given root node subtree contains 6 edges When requesting first page of size 3 Then next link is correcly set to second page with size 3`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
 
         val response = edgeController.getTree(page = 1, pageSize = 3) // Assuming total edges < 9
-        assertEquals("/edge?page=2&pageSize=3", response.body?.links?.next)
+        assertEquals("http://$hostName:$port/edge?page=2&pageSize=3", response.body?.links?.next)
     }
 
     @Test
     fun `Given root node subtree contains 6 edges When requesting first page of size 3 Then last link is correcly set to second page with size 3`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
 
         val response = edgeController.getTree(page = 1, pageSize = 3) // Assuming total edges < 9
-        assertEquals("/edge?page=2&pageSize=3", response.body?.links?.last)
+        assertEquals("http://$hostName:$port/edge?page=2&pageSize=3", response.body?.links?.last)
     }
 
     @Test
     fun `Given no more data in response When checking next link Then it is null`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
 
         val response = edgeController.getTree(page = 2, pageSize = 3) // Assuming total edges < 9
@@ -194,7 +194,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given a single page in response When checking first and last links Then they are equal`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
 
         val response = edgeController.getTree(page = 1, pageSize = 10) // Assuming all data fits in one page
@@ -203,7 +203,7 @@ class EdgeControllerTest {
 
     @Test
     fun `Given first page of data is requested When checking previous link Then it is null`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
 
         val response = edgeController.getTree(page = 1, pageSize = 3)
@@ -212,18 +212,18 @@ class EdgeControllerTest {
 
     @Test
     fun `Given second page of data is requested When checking previous link Then it is correctly set`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
 
         val response = edgeController.getTree(page = 2, pageSize = 3)
-        assertEquals("/edge?page=1&pageSize=3", response.body?.links?.previous)
+        assertEquals("http://$hostName:$port/edge?page=1&pageSize=3", response.body?.links?.previous)
     }
 
     //region edge deletion
 
     @Test
     fun `Given edge 1 to 5 doesn't exist, When requesting to delete it Then invalid page exception is thrown`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
         assertThrows<EdgeNotFoundException> {
             edgeController.deleteEdge(EdgeRequestBody(1, 5))
@@ -232,14 +232,14 @@ class EdgeControllerTest {
 
     @Test
     fun `Given edge 1 to 3 exists, When requesting to delete it Then response ok is returned`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
         assertEquals(HttpStatus.OK, edgeController.deleteEdge(EdgeRequestBody(1, 3)).statusCode)
     }
 
     @Test
     fun `Given edge 1 to 3 exists, When requesting to delete it Then it is removed from db as well as all its subtree`() {
-        val edgeController = EdgeController(EdgeService(EdgeRepository(dslContext)))
+        val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
         edgeController.deleteEdge(EdgeRequestBody(1, 3))
         val updatedDb = dslContext.fetch(EDGE)
@@ -248,6 +248,18 @@ class EdgeControllerTest {
             assertNotEquals(deletedEdges[0], it)
             assertNotEquals(deletedEdges[1], it)
         }
+    }
+
+    private val hostName = "hostName"
+    private val port = "8080"
+    private fun createEdgeController(): EdgeController {
+        return EdgeController(
+            EdgeService(
+                edgeRepository = EdgeRepository(dslContext),
+                hostName = hostName,
+                port = port,
+            )
+        )
     }
 
     //endregion edge deletion
