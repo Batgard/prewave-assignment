@@ -66,7 +66,6 @@ class EdgeControllerTest {
         }
     }
 
-
     @Test
     fun `Given edge 0 does not exist, When requesting it with its subtree Then an error not found is returned`() {
         val edgeController = createEdgeController()

@@ -2,19 +2,17 @@ package fr.batgard.prewave_assignment.edge
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import fr.batgard.prewave_assignment.db.models.tables.Edge.Companion.EDGE
-import jakarta.servlet.http.HttpServletRequest
 import org.jooq.DSLContext
 import org.jooq.Name
 import org.jooq.exception.IntegrityConstraintViolationException
 import org.jooq.impl.DSL.*
 import org.jooq.impl.SQLDataType.INTEGER
-import org.springframework.core.annotation.AnnotationUtils
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Repository
 import org.springframework.stereotype.Service
 import org.springframework.web.bind.annotation.*
-import org.springframework.web.servlet.ModelAndView
 
 @RestController
 @RequestMapping("/edge")
@@ -87,31 +85,36 @@ data class EdgePageLink(
 
 @ControllerAdvice
 class GlobalExceptionHandler {
-    @ExceptionHandler(Exception::class)
-    fun defaultErrorHandler(req: HttpServletRequest, e: Exception): ModelAndView {
-        if (AnnotationUtils.findAnnotation(e.javaClass, ResponseStatus::class.java) != null) {
-            throw e
-        }
+    class ApiError(
+        val status: Int? = null,
+        val message: String? = null,
+    )
 
-        return ModelAndView("error").apply {
-            addObject("exception", e)
-            addObject("url", req.requestURL)
-        }
+    @ExceptionHandler(Exception::class)
+    fun defaultErrorHandler(e: Exception): ResponseEntity<ApiError> {
+        val httpStatus = HttpStatus.INTERNAL_SERVER_ERROR
+        return ResponseEntity(ApiError(httpStatus.value(), "Exception : ${e::class.simpleName} \n ${e.message}"), httpStatus)
     }
 
     @ExceptionHandler(EdgeAlreadyExistsException::class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    fun handleEdgeAlreadyExistsException(e: EdgeAlreadyExistsException) {
+    fun handleEdgeAlreadyExistsException(e: EdgeAlreadyExistsException): ResponseEntity<ApiError> {
+        val httpStatus = HttpStatus.CONFLICT
+        return ResponseEntity(ApiError(httpStatus.value(), e.message), httpStatus)
     }
 
     @ExceptionHandler(EdgeNotFoundException::class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    fun handleEdgeNotFoundException(e: EdgeAlreadyExistsException) {
+    fun handleEdgeNotFoundException(e: EdgeNotFoundException): ResponseEntity<ApiError> {
+        val httpStatus = HttpStatus.NOT_FOUND
+        return ResponseEntity(ApiError(httpStatus.value(), e.message), httpStatus)
     }
 
     @ExceptionHandler(PageIndexOutOfBoundsException::class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    fun handleInvalidPageException(e: PageIndexOutOfBoundsException) {
+    fun handleInvalidPageException(e: PageIndexOutOfBoundsException): ResponseEntity<ApiError> {
+        val httpStatus = HttpStatus.NOT_FOUND
+        return ResponseEntity(ApiError(httpStatus.value(), e.message), httpStatus)
     }
 }
 
@@ -210,8 +213,11 @@ class EdgeRepository(private val dslContext: DSLContext) {
                 .set(EDGE.FROM_ID, fromId)
                 .set(EDGE.TO_ID, toId)
                 .execute()
+        } catch (e: DataIntegrityViolationException) {
+            throw EdgeAlreadyExistsException(message = "Edge fromId = $fromId, toId = $toId already exists.")
         } catch (e: IntegrityConstraintViolationException) {
             throw EdgeAlreadyExistsException(message = "Edge fromId = $fromId, toId = $toId already exists.")
+            // for an unknow reason, the exception thrown by the testdatasource isn't the same as the one in production
         }
     }
 
