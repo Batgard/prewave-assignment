@@ -2,6 +2,7 @@ package fr.batgard.prewave_assignment.edge
 
 import fr.batgard.prewave_assignment.db.models.tables.Edge.Companion.EDGE
 import fr.batgard.prewave_assignment.db.models.tables.records.EdgeRecord
+import org.assertj.core.api.Assertions.assertThat
 import org.jooq.SQLDialect
 import org.jooq.impl.DSL
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -86,10 +87,12 @@ class EdgeControllerTest {
         val treeFromRootNodeResponse = edgeController.getTree(rootNodeId = 1)
 
         assertEquals(HttpStatus.OK, treeFromRootNodeResponse.statusCode)
-        assertEquals(
-            listOf(Pair(1, 2), Pair(1, 3), Pair(2, 4), Pair(2, 5), Pair(3, 6), Pair(5, 7)),
-            treeFromRootNodeResponse.body?.edges
-        )
+
+        assertThat(treeFromRootNodeResponse.body?.edges)
+            .usingComparator(listComparator)
+            .isEqualTo(
+                listOf(arrayOf(1, 2), arrayOf(1, 3), arrayOf(2, 4), arrayOf(2, 5), arrayOf(3, 6), arrayOf(5, 7)),
+            )
     }
 
     @Test
@@ -101,10 +104,11 @@ class EdgeControllerTest {
         val treeFromRootNodeResponse = edgeController.getTree()
 
         assertEquals(HttpStatus.OK, treeFromRootNodeResponse.statusCode)
-        assertEquals(
-            listOf(Pair(1, 2), Pair(1, 3), Pair(2, 4), Pair(2, 5), Pair(3, 6), Pair(5, 7)),
-            treeFromRootNodeResponse.body?.edges
-        )
+        assertThat(treeFromRootNodeResponse.body?.edges)
+            .usingComparator(listComparator)
+            .isEqualTo(
+                listOf(arrayOf(1, 2), arrayOf(1, 3), arrayOf(2, 4), arrayOf(2, 5), arrayOf(3, 6), arrayOf(5, 7)),
+            )
     }
 
     /**
@@ -129,10 +133,9 @@ class EdgeControllerTest {
 
         val subtree = edgeController.getTree(rootNodeId = 2)
 
-        assertEquals(
-            listOf(Pair(2, 4), Pair(2, 5), Pair(5, 7)),
-            subtree.body?.edges
-        )
+        assertThat(subtree.body?.edges)
+            .usingComparator(listComparator)
+            .isEqualTo(listOf(arrayOf(2, 4), arrayOf(2, 5), arrayOf(5, 7)))
     }
 
     @Test
@@ -142,17 +145,12 @@ class EdgeControllerTest {
 
         val firstPageResponse = edgeController.getTree(page = 1, pageSize = 3)
         assertEquals(HttpStatus.OK, firstPageResponse.statusCode)
-        assertEquals(
-            listOf(Pair(1, 2), Pair(1, 3), Pair(2, 4)),
-            firstPageResponse.body?.edges
-        )
 
         val secondPageResponse = edgeController.getTree(page = 2, pageSize = 3)
         assertEquals(HttpStatus.OK, secondPageResponse.statusCode)
-        assertEquals(
-            listOf(Pair(2, 5), Pair(3, 6), Pair(5, 7)),
-            secondPageResponse.body?.edges
-        )
+        assertThat(secondPageResponse.body?.edges)
+            .usingComparator(listComparator)
+            .isEqualTo(listOf(arrayOf(2, 5), arrayOf(3, 6), arrayOf(5, 7)))
     }
 
     @Test
@@ -247,6 +245,16 @@ class EdgeControllerTest {
         updatedDb.forEach {
             assertNotEquals(deletedEdges[0], it)
             assertNotEquals(deletedEdges[1], it)
+        }
+    }
+
+    private val listComparator = Comparator<List<Array<Int>>> { l1, l2 ->
+        if (l1.size == l2.size && l1.zip(l2).all { pairOfArrays ->
+                pairOfArrays.first.contentEquals(pairOfArrays.second)
+            }) {
+            0
+        } else {
+            -1
         }
     }
 

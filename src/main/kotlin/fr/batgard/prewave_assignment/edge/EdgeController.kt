@@ -44,7 +44,7 @@ class EdgeController(private val edgeService: EdgeService) {
 
         //FIXME: Add parameter validation for page and pageSize (set)
 
-        val tree = if (rootNodeId != null) {
+        val tree: List<Array<Int>> = if (rootNodeId != null) {
             edgeService.fetchTreeWithRoot(rootNodeId, page, pageSize)
         } else {
             edgeService.fetchTreeFromRoot(page, pageSize)
@@ -69,7 +69,7 @@ data class EdgeRequestBody(
 
 data class EdgeResponse(
     @JsonProperty("edges")
-    val edges: List<Pair<Int, Int>>,
+    val edges: List<Array<Int>>,
     @JsonProperty("links")
     val links: EdgePageLink,
 )
@@ -121,10 +121,10 @@ class EdgeService constructor(
     private val hostName: String,
     port: String?,
 ) {
-    private val port: String? = if (port != null) {
+    private val port: String = if (port != null) {
         ":$port"
     } else {
-        null
+        ""
     }
 
     fun createEdge(request: EdgeRequestBody) {
@@ -140,7 +140,7 @@ class EdgeService constructor(
     fun fetchTreeFromRoot(
         page: Int,
         pageSize: Int,
-    ): List<Pair<Int, Int>> {
+    ): List<Array<Int>> {
         return fetchTreeWithRoot(edgeRepository.getRootNodeId(), page, pageSize)
     }
 
@@ -148,7 +148,7 @@ class EdgeService constructor(
         nodeId: Int,
         page: Int,
         pageSize: Int,
-    ): List<Pair<Int, Int>> {
+    ): List<Array<Int>> {
         if (edgeRepository.contains(nodeId).not()) {
             throw EdgeNotFoundException(message = "No edge found with fromId = $nodeId.")
         }
@@ -278,7 +278,7 @@ class EdgeRepository(private val dslContext: DSLContext) {
             .first() ?: throw IllegalStateException("Couldn't find the root node")
     }
 
-    fun getTreeWithRoot(nodeId: Int, page: Int, pageSize: Int): List<Pair<Int, Int>> {
+    fun getTreeWithRoot(nodeId: Int, page: Int, pageSize: Int): List<Array<Int>> {
         val cteName = "tree"
         val cte = name(cteName).fields(EDGE.FROM_ID.name, EDGE.TO_ID.name).`as`(
             select(EDGE.FROM_ID, EDGE.TO_ID).from(EDGE).where(EDGE.FROM_ID.eq(nodeId))
@@ -300,7 +300,7 @@ class EdgeRepository(private val dslContext: DSLContext) {
             .fetch()
             .sortedBy { it.value1() }
 
-        return fetchResult.map { it.value1()!! to it.value2()!! }
+        return fetchResult.map { arrayOf(it.value1()!!, it.value2()!!) }
     }
 
     fun countAll(): Int {
