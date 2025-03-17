@@ -168,7 +168,7 @@ class EdgeControllerTest {
         insertTreeInDatabase(edgeController)
 
         val response = edgeController.getTree(page = 1, pageSize = 3) // Assuming total edges < 9
-        assertEquals("http://$hostName:$port/edge?page=2&pageSize=3", response.body?.links?.next)
+        assertEquals("http://$hostIP:$port/edge?page=2&pageSize=3", response.body?.links?.next)
     }
 
     @Test
@@ -177,7 +177,7 @@ class EdgeControllerTest {
         insertTreeInDatabase(edgeController)
 
         val response = edgeController.getTree(page = 1, pageSize = 3) // Assuming total edges < 9
-        assertEquals("http://$hostName:$port/edge?page=2&pageSize=3", response.body?.links?.last)
+        assertEquals("http://$hostIP:$port/edge?page=2&pageSize=3", response.body?.links?.last)
     }
 
     @Test
@@ -213,7 +213,7 @@ class EdgeControllerTest {
         insertTreeInDatabase(edgeController)
 
         val response = edgeController.getTree(page = 2, pageSize = 3)
-        assertEquals("http://$hostName:$port/edge?page=1&pageSize=3", response.body?.links?.previous)
+        assertEquals("http://$hostIP:$port/edge?page=1&pageSize=3", response.body?.links?.previous)
     }
 
     //region edge deletion
@@ -257,13 +257,13 @@ class EdgeControllerTest {
         }
     }
 
-    private val hostName = "hostName"
+    private val hostIP = "192.168.0.42"
     private val port = "8080"
     private fun createEdgeController(): EdgeController {
         return EdgeController(
             EdgeService(
                 edgeRepository = EdgeRepository(dslContext),
-                hostName = hostName,
+                hostIP = hostIP,
                 port = port,
             )
         )

@@ -1,5 +1,6 @@
 import org.jooq.codegen.GenerationTool
 import org.jooq.meta.jaxb.*
+import org.jooq.meta.jaxb.Target as JooqTarget
 import org.jooq.meta.jaxb.Configuration
 
 plugins {
@@ -55,7 +56,7 @@ dependencies {
 
 kotlin {
     compilerOptions {
-        freeCompilerArgs.addAll("-Xjsr305=strict")
+        freeCompilerArgs.addAll("-Xjsr305=strict") // Enable strict nullability checks
     }
 }
 
@@ -63,36 +64,8 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-jooq {
-    configuration {
-
-        // Configure the database connection here
-        jdbc {
-            driver = "org.postgresql.Driver"
-            url = "jdbc:postgresql://localhost:5432/tree_edge_db"
-            user = "prewave"
-            password = "prew4vePwd"
-        }
-        generator {
-            name = "org.jooq.codegen.KotlinGenerator"
-            database {
-                name = "org.jooq.meta.postgres.PostgresDatabase"
-                inputSchema = "public"
-            }
-            generate {
-                isDaos = true
-                isPojosAsKotlinDataClasses = true
-            }
-            target {
-                packageName = "fr.batgard.prewave.db.models"
-                directory = "build/generated-src/jooq/main"
-            }
-        }
-    }
-}
-
 /**
- * Equivalent to running 'jooq' task?
+ * Run this to generate the JOOQ classes.
  */
 tasks.register("generateJooq") {
     group = "jooq"
@@ -124,7 +97,7 @@ tasks.register("generateJooq") {
                             .withPojos(true)
                     )
                     .withTarget(
-                        org.jooq.meta.jaxb.Target()
+                        JooqTarget()
                             .withPackageName("fr.batgard.prewave_assignment.db.models")
                             .withDirectory("${projectDir}/build/generated-src/jooq/main")
                     )

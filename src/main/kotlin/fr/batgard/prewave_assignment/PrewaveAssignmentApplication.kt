@@ -20,7 +20,7 @@ class AppConfig {
 	@Autowired
 	private lateinit var environment: org.springframework.core.env.Environment
 	@Bean
-	fun hostName(): String = InetAddress.getLocalHost().hostName
+	fun hostIP(): String = System.getenv("HOST_IP")
 	@Bean
 	fun port(): String? = environment.getProperty("server.port")
 }

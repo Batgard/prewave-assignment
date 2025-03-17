@@ -121,7 +121,7 @@ class GlobalExceptionHandler {
 @Service
 class EdgeService constructor(
     private val edgeRepository: EdgeRepository,
-    private val hostName: String,
+    private val hostIP: String,
     port: String?,
 ) {
     private val port: String = if (port != null) {
@@ -197,7 +197,7 @@ class EdgeService constructor(
 
     private fun generatePageLink(rootNodeId: Int?, page: Int, pageSize: Int): String {
         val rootNodeIdQueryParam = if (rootNodeId != null) "&rootNodeId=$rootNodeId&" else ""
-        return "http://$hostName$port/edge?${rootNodeIdQueryParam}page=$page&pageSize=$pageSize"
+        return "http://$hostIP$port/edge?${rootNodeIdQueryParam}page=$page&pageSize=$pageSize"
     }
 
     private companion object {
