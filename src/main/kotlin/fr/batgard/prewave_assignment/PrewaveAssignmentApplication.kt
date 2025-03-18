@@ -5,7 +5,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import java.net.InetAddress
 
 @SpringBootApplication
 class PrewaveAssignmentApplication {
@@ -19,8 +18,10 @@ fun main(args: Array<String>) {
 class AppConfig {
 	@Autowired
 	private lateinit var environment: org.springframework.core.env.Environment
+
 	@Bean
 	fun hostIP(): String = System.getenv("HOST_IP")
+
 	@Bean
 	fun port(): String? = environment.getProperty("server.port")
 }

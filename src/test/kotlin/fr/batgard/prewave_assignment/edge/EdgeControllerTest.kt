@@ -2,6 +2,12 @@ package fr.batgard.prewave_assignment.edge
 
 import fr.batgard.prewave_assignment.db.models.tables.Edge.Companion.EDGE
 import fr.batgard.prewave_assignment.db.models.tables.records.EdgeRecord
+import fr.batgard.prewave_assignment.edge.model.EdgeRequestBody
+import fr.batgard.prewave_assignment.edge.repository.EdgeRepository
+import fr.batgard.prewave_assignment.edge.repository.exception.EdgeAlreadyExistsException
+import fr.batgard.prewave_assignment.edge.repository.exception.EdgeNotFoundException
+import fr.batgard.prewave_assignment.edge.repository.exception.PageIndexOutOfBoundsException
+import fr.batgard.prewave_assignment.edge.service.EdgeService
 import org.assertj.core.api.Assertions.assertThat
 import org.jooq.SQLDialect
 import org.jooq.impl.DSL
