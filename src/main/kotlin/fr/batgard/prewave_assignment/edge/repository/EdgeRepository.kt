@@ -9,6 +9,7 @@ import org.jooq.impl.DSL.*
 import org.jooq.impl.SQLDataType.INTEGER
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Repository
+import java.util.*
 
 @Repository
 internal class EdgeRepository(private val dslContext: DSLContext) {
@@ -35,17 +36,17 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
      * @return whether or not a row was deleted
      */
     fun deleteEdge(fromId: Int, toId: Int): Boolean {
-        val cteName = "edges_to_delete"
+        val cteName = generateCteName("edges_to_delete")
         val edgesToDeleteCteName: Name = name(cteName)
 
         val edgesToDeleteCommonTableExpression = edgesToDeleteCteName
             .fields(EDGE.FROM_ID.name, EDGE.TO_ID.name).`as`(
-                // Base case: the edge to delete
+                // Base case (or anchor member): the edge to delete
                 select(EDGE.FROM_ID, EDGE.TO_ID)
                     .from(EDGE)
                     .where(EDGE.FROM_ID.eq(fromId).and(EDGE.TO_ID.eq(toId)))
                     .unionAll(
-                        // Recursive case: find child edges
+                        // recursive member
                         select(EDGE.FROM_ID, EDGE.TO_ID)
                             .from(EDGE)
                             .join(edgesToDeleteCteName)
@@ -61,7 +62,10 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
             .delete(EDGE)
             .where(
                 row(EDGE.FROM_ID, EDGE.TO_ID).`in`(
-                    select(EDGE.FROM_ID, EDGE.TO_ID).from(edgesToDeleteCteName)
+                    select(
+                        field(name(cteName, EDGE.FROM_ID.name), INTEGER),
+                        field(name(cteName, EDGE.TO_ID.name), INTEGER)
+                    ).from(edgesToDeleteCteName)
                 )
             ).execute()
         return result > 0
@@ -90,26 +94,18 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
     }
 
     fun getTreeWithRoot(nodeId: Int, page: Int, pageSize: Int): List<Array<Int>> {
-        val cteName = "tree"
-        val cte = name(cteName).fields(EDGE.FROM_ID.name, EDGE.TO_ID.name).`as`(
-            select(EDGE.FROM_ID, EDGE.TO_ID).from(EDGE).where(EDGE.FROM_ID.eq(nodeId))
-                .unionAll(
-                    select(EDGE.FROM_ID, EDGE.TO_ID)
-                        .from(table(name(cteName)))
-                        .join(EDGE)
-                        .on(EDGE.FROM_ID.eq(field(name(cteName, EDGE.TO_ID.name), INTEGER)))
-                )
-        )
+        val cteName = generateCteName("tree")
+        val cte = getTreeCommonTableExpression(cteName, nodeId)
         val offset = (page - 1) * pageSize
         /* Probably not ideal but better than filtering at a later point.
          * Some thoughts on how to solve this: For each client, save requested content and some kind of index where we left off
          */
         val fetchResult = dslContext.withRecursive(cte)
             .selectFrom(cte)
+            .orderBy(field(cteName, EDGE.FROM_ID.name))
             .limit(pageSize)
             .offset(offset)
             .fetch()
-            .sortedBy { it.value1() }
 
         return fetchResult.map { arrayOf(it.value1()!!, it.value2()!!) }
     }
@@ -119,16 +115,8 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
     }
 
     fun countEdgesForNode(nodeId: Int): Int {
-        val cteName = "edge_subtree_count"
-        val edgeSubtreeCountCte = name(cteName).fields(EDGE.FROM_ID.name, EDGE.TO_ID.name).`as`(
-            select(EDGE.FROM_ID, EDGE.TO_ID).from(EDGE).where(EDGE.FROM_ID.eq(nodeId))
-                .unionAll(
-                    select(EDGE.FROM_ID, EDGE.TO_ID)
-                        .from(table(name(cteName)))
-                        .join(EDGE)
-                        .on(EDGE.FROM_ID.eq(field(name(cteName, EDGE.TO_ID.name), INTEGER)))
-                )
-        )
+        val cteName = generateCteName("edge_subtree_count")
+        val edgeSubtreeCountCte = getTreeCommonTableExpression(cteName, nodeId)
         return dslContext.withRecursive(edgeSubtreeCountCte)
             .selectCount()
             .from(table(name(cteName)))
@@ -142,4 +130,22 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
                 .where(EDGE.FROM_ID.eq(nodeId).or(EDGE.TO_ID.eq(nodeId)))
         )
     }
+
+    private fun getTreeCommonTableExpression(
+        cteName: String,
+        nodeId: Int
+    ) = name(cteName).fields(EDGE.FROM_ID.name, EDGE.TO_ID.name).`as`(
+        select(EDGE.FROM_ID, EDGE.TO_ID)
+            .from(EDGE)
+            .where(EDGE.FROM_ID.eq(nodeId))
+            .unionAll(
+                select(EDGE.FROM_ID, EDGE.TO_ID)
+                    .from(table(name(cteName)))
+                    .join(EDGE)
+                    .on(EDGE.FROM_ID.eq(field(name(cteName, EDGE.TO_ID.name), INTEGER)))
+            )
+    )
+
+    private fun generateCteName(prefix: String): String = prefix + UUID.randomUUID().toString()
+
 }

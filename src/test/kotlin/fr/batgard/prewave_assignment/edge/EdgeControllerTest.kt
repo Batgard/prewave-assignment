@@ -241,7 +241,7 @@ class EdgeControllerTest {
     }
 
     @Test
-    fun `Given edge 1 to 3 exists, When requesting to delete it Then it is removed from db as well as all its subtree`() {
+    fun `Given edge 1 to 3 exists, When requesting to delete it Then it is removed from db`() {
         val edgeController = createEdgeController()
         insertTreeInDatabase(edgeController)
         edgeController.deleteEdge(EdgeRequestBody(1, 3))
@@ -251,6 +251,21 @@ class EdgeControllerTest {
             assertNotEquals(deletedEdges[0], it)
             assertNotEquals(deletedEdges[1], it)
         }
+    }
+
+    @Test
+    fun `Given edge 1 to 3 existed but were then deleted, When requesting the updated tree Then it is not in the tree`() {
+        val edgeController = createEdgeController()
+        insertTreeInDatabase(edgeController)
+        edgeController.deleteEdge(EdgeRequestBody(1, 3))
+        val updatedTree = edgeController.getTree()
+        assertThat(updatedTree.body?.edges)
+            .usingComparator(listComparator)
+            .isEqualTo(
+                listOf(
+                    arrayOf(1, 2), arrayOf(2, 4), arrayOf(2, 5), arrayOf(5, 7)
+                )
+            )
     }
 
     private val listComparator = Comparator<List<Array<Int>>> { l1, l2 ->
