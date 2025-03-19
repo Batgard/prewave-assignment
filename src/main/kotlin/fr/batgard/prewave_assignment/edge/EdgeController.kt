@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/edge")
 internal class EdgeController(private val edgeService: EdgeService) {
 
+
     @PostMapping
     fun createEdge(@RequestBody requestBody: EdgeRequestBody): ResponseEntity<Any> {
         edgeService.createEdge(requestBody)
@@ -20,12 +21,14 @@ internal class EdgeController(private val edgeService: EdgeService) {
 
     @DeleteMapping
     fun deleteEdge(@RequestBody requestBody: EdgeRequestBody): ResponseEntity<String> {
-        edgeService.deleteEdge(requestBody)
-        return ResponseEntity.ok("Edge deleted successfully.")
+        val deletedEdgeCount = edgeService.deleteEdge(requestBody)
+        return ResponseEntity.ok("$deletedEdgeCount edges deleted successfully.")
     }
 
     /**
      * @param rootNodeId the root node ID
+     * @param page the page number
+     * @param pageSize the page size. Must be between 1 and 100
      */
     @GetMapping
     fun getTree(
@@ -34,7 +37,8 @@ internal class EdgeController(private val edgeService: EdgeService) {
         @RequestParam pageSize: Int = 20,
     ): ResponseEntity<EdgeResponse> {
 
-        //FIXME: Add parameter validation for page and pageSize (set)
+        require(page > 0) { "Page number must be greater than 0" }
+        require(pageSize > 0 && pageSize <= 100) { "Page size must be greater than 0" }
 
         val tree: List<Array<Int>> = if (rootNodeId != null) {
             edgeService.fetchTreeWithRoot(rootNodeId, page, pageSize)

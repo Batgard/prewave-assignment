@@ -13,6 +13,9 @@ import java.util.*
 
 @Repository
 internal class EdgeRepository(private val dslContext: DSLContext) {
+    /**
+     * FIXME: There isn't any validation whether the new node doesn'tbreak the datastructure (by creating a cycle) but it should be implemented
+     */
     fun insertEdge(fromId: Int, toId: Int) {
         try {
             dslContext.insertInto(EDGE)
@@ -33,9 +36,9 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
      * the subtree of the node will be deleted as well unless specified. Reasons for not deleting the entire subtree are
      * that in real-life cases, the conections between all the downstream companies might still exist even after the deletion of
      * the upstream company.
-     * @return whether or not a row was deleted
+     * @return the number of edges deleted
      */
-    fun deleteEdge(fromId: Int, toId: Int): Boolean {
+    fun deleteEdge(fromId: Int, toId: Int): Int {
         val cteName = generateCteName("edges_to_delete")
         val edgesToDeleteCteName: Name = name(cteName)
 
@@ -68,7 +71,7 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
                     ).from(edgesToDeleteCteName)
                 )
             ).execute()
-        return result > 0
+        return result
     }
 
     /**
@@ -90,7 +93,7 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
                 )
             )
             .fetch(EDGE.FROM_ID)
-            .first() ?: throw IllegalStateException("Couldn't find the root node")
+            .firstOrNull() ?: throw IllegalStateException("Couldn't find the root node")
     }
 
     fun getTreeWithRoot(nodeId: Int, page: Int, pageSize: Int): List<Array<Int>> {
@@ -146,6 +149,6 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
             )
     )
 
-    private fun generateCteName(prefix: String): String = prefix + UUID.randomUUID().toString()
+    private fun generateCteName(prefix: String): String = prefix + UUID.randomUUID().toString().replace("-", "a")
 
 }

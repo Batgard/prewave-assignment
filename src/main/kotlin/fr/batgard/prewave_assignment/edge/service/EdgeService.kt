@@ -22,9 +22,16 @@ internal class EdgeService(
         edgeRepository.insertEdge(request.fromId, request.toId)
     }
 
-    fun deleteEdge(request: EdgeRequestBody) {
-        if (!edgeRepository.deleteEdge(request.fromId, request.toId)) {
+    /**
+     * @return the number of deleted edges.
+     * @throws EdgeNotFoundException if edge could not be found
+     */
+    fun deleteEdge(request: EdgeRequestBody): Int {
+        val deleteEdgeCount = edgeRepository.deleteEdge(request.fromId, request.toId)
+        if (deleteEdgeCount == 0) {
             throw EdgeNotFoundException(message = "No edge found with fromId = ${request.fromId} and toId = ${request.toId}.")
+        } else {
+            return deleteEdgeCount
         }
     }
 
