@@ -80,7 +80,10 @@ internal class EdgeService(
     }
 
     fun getLastPageLink(rootNodeId: Int?, page: Int, pageSize: Int): String {
-        val pageIndex = (countEdgesInSubtree(rootNodeId) / pageSize).coerceAtLeast(1)
+        val edgeCount = countEdgesInSubtree(rootNodeId)
+        val fullPageCount = edgeCount / pageSize
+        val partiallyFullPageCount = if (edgeCount % pageSize == 0) 0 else 1
+        val pageIndex = (fullPageCount + partiallyFullPageCount).coerceAtLeast(1)
         return generatePageLink(rootNodeId, pageIndex, pageSize)
     }
 
