@@ -1,21 +1,23 @@
 # Setup
 ## Running the app locally
+### Using Docker
 To run the application locally, please use the docker-compose-setup-wrapper.sh.
 Use `chmod +x docker-compose-setup-wrapper.sh` to make it executable.
 This will setup the host IP and call `docker-compose up --build`
-**Note**: You could also use the gradle task `bootRun`, but in this case, you'd have to setup the PostgreSQL database manually. Check setup_tree_edge_db.sh to do so. Note: That one was generated using AI, please forgive me.
+### Building the app
+Use the following gradle tasks
+- `generateJooq` to generate the classes that are used to interact with the database
+- `build` to compile and execute the tests
+- `bootRun` to run the app.
+**Note**: You'll have to setup the *PostgreSQL* database manually. Check setup_tree_edge_db.sh to do so. Note: That one was generated using AI, please forgive me.
 ## Using the app locally
 Here are examples of request you can send to the app. If running the app on a different machine than yours: remember to replace 'localhost' with the host's IP.
 ### GET
 `curl http://localhost:8080/edge`
 ### POST
-`curl -X POST "http://localhost:8080/edge" \
-     -H "Content-Type: application/json" \
-     -d '{"fromId": 5,"toId": 7}'`
+`curl -X POST "http://localhost:8080/edge" -H "Content-Type: application/json" -d '{"fromId": 5,"toId": 7}'`
 ### DELETE
-`curl -X DELETE "http://localhost:8080/edge" \
-     -H "Content-Type: application/json" \
-     -d '{"fromId": 5,"toId": 7}'`
+`curl -X DELETE "http://localhost:8080/edge" -H "Content-Type: application/json -d '{"fromId": 5,"toId": 7}'`
 
 # Interview Development Task
 

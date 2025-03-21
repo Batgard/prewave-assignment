@@ -6,6 +6,7 @@ import fr.batgard.prewave_assignment.edge.model.EdgeRequestBody
 import fr.batgard.prewave_assignment.edge.repository.EdgeRepository
 import fr.batgard.prewave_assignment.edge.repository.exception.EdgeAlreadyExistsException
 import fr.batgard.prewave_assignment.edge.repository.exception.EdgeNotFoundException
+import fr.batgard.prewave_assignment.edge.repository.exception.EmptyEdgeDatabaseException
 import fr.batgard.prewave_assignment.edge.repository.exception.PageIndexOutOfBoundsException
 import fr.batgard.prewave_assignment.edge.service.EdgeService
 import org.assertj.core.api.Assertions.assertThat
@@ -73,13 +74,22 @@ class EdgeControllerTest {
     }
 
     @Test
-    fun `Given edge 0 does not exist, When requesting it with its subtree Then an error not found is returned`() {
+    fun `Given edge 0 does not exist, When requesting it with its subtree Then an edge not found exception is thrown`() {
         val edgeController = createEdgeController()
 
         insertTreeWith6EdgesInDatabase(edgeController)
 
         assertThrows<EdgeNotFoundException> {
             edgeController.getTree(rootNodeId = 0)
+        }
+    }
+
+    @Test
+    fun `Given db is empty, When requesting edges without specifying the root node Then an empty db exception is thrown`() {
+        val edgeController = createEdgeController()
+
+        assertThrows<EmptyEdgeDatabaseException> {
+            edgeController.getTree()
         }
     }
 

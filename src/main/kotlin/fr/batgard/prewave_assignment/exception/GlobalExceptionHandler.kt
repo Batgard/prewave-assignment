@@ -2,6 +2,7 @@ package fr.batgard.prewave_assignment.exception
 
 import fr.batgard.prewave_assignment.edge.repository.exception.EdgeAlreadyExistsException
 import fr.batgard.prewave_assignment.edge.repository.exception.EdgeNotFoundException
+import fr.batgard.prewave_assignment.edge.repository.exception.EmptyEdgeDatabaseException
 import fr.batgard.prewave_assignment.edge.repository.exception.PageIndexOutOfBoundsException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -35,6 +36,13 @@ class GlobalExceptionHandler {
     @ExceptionHandler(EdgeNotFoundException::class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     fun handleEdgeNotFoundException(e: EdgeNotFoundException): ResponseEntity<ApiError> {
+        val httpStatus = HttpStatus.NOT_FOUND
+        return ResponseEntity(ApiError(httpStatus.value(), e.message), httpStatus)
+    }
+
+    @ExceptionHandler(EmptyEdgeDatabaseException::class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    fun handleEmptyDatabaseException(e: EmptyEdgeDatabaseException): ResponseEntity<ApiError> {
         val httpStatus = HttpStatus.NOT_FOUND
         return ResponseEntity(ApiError(httpStatus.value(), e.message), httpStatus)
     }

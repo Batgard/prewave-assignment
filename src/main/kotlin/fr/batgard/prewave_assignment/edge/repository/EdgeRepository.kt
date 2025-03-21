@@ -2,6 +2,7 @@ package fr.batgard.prewave_assignment.edge.repository
 
 import fr.batgard.prewave_assignment.db.models.tables.Edge.Companion.EDGE
 import fr.batgard.prewave_assignment.edge.repository.exception.EdgeAlreadyExistsException
+import fr.batgard.prewave_assignment.edge.repository.exception.EmptyEdgeDatabaseException
 import org.jooq.DSLContext
 import org.jooq.Name
 import org.jooq.exception.IntegrityConstraintViolationException
@@ -82,7 +83,7 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
      * return the first result fetched. If no root node is found, an exception will be thrown.
      *
      * @return The ID of the root node of the graph.
-     * @throws IllegalStateException If no root node is found in the graph.
+     * @throws EmptyEdgeDatabaseException If no root node is found in the graph.
      */
     fun getRootNodeId(): Int {
         return dslContext.selectDistinct(EDGE.FROM_ID)
@@ -93,7 +94,7 @@ internal class EdgeRepository(private val dslContext: DSLContext) {
                 )
             )
             .fetch(EDGE.FROM_ID)
-            .firstOrNull() ?: throw IllegalStateException("Couldn't find the root node")
+            .firstOrNull() ?: throw EmptyEdgeDatabaseException()
     }
 
     fun getTreeWithRoot(nodeId: Int, page: Int, pageSize: Int): List<Array<Int>> {
